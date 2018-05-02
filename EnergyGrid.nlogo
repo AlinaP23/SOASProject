@@ -1,6 +1,9 @@
 globals [
   hubMarketPrice
+  hubMarketSupply
+  hubMarketDemand
   factoryMarketPrice
+  weekDay
 ]
 
 directed-link-breed [activeLinks activeLink]
@@ -30,7 +33,11 @@ factories-own [
 ]
 
 hubs-own [
+  localSupply
+  localDemand
   localPrice
+  localSurplus
+  localLack
 ]
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -39,6 +46,8 @@ hubs-own [
 
 to setup
   clear-all
+  reset-ticks
+  set weekDay 1
   ifelse number-houses < number-shops [
     display
     user-message "The number of houses must be greater than the number of shops."
@@ -57,10 +66,10 @@ to make-houses
     set shape "house"
     set hubId random number-hubs
     set color green
-   ; set consumption
-   ; set production
-   ; set priceSensitivity
-   ; set priceMemoryList
+    set consumption [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+    set production [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+   ; set priceSensitivity -> !!
+   ; set priceMemoryList-> initialize with 0 here?
   ]
   layout-circle sort-by [ [a b] -> [hubId] of a < [hubId] of b ] houses max-pxcor - 1
   ask houses [
@@ -76,6 +85,15 @@ to make-shops
     set shape "building store"
     set hubId random number-hubs
     set color green
+    set consumptionLevel random 3
+    ifelse consumptionLevel = 1 [
+      set consumption [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+    ] [ ifelse consumptionLevel = 2 [
+        set consumption [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+      ][
+        set consumption [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+      ]
+    ]
   ]
   layout-circle sort-by [ [a b] -> [hubId] of a < [hubId] of b ] shops max-pxcor - 5
   ask shops [
@@ -116,17 +134,76 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 to go
+  computeLocalPrices
+  computeHubMarketPrice
+  computeFactoryMarketPrice
+
+;  localEnergyDistribution
+;  hubMarketEnergyDistribution
+;  factoryEnergyDistribution
+  tick
+  if ticks > 23 [     ; ticks simulate the time/hour -> reset to 0 when end of day (24h) is reached
+    reset-ticks
+    ifelse weekDay = 7 [
+      set weekDay 1
+      house-consumptionAdjustment
+    ] [
+      set weekDay weekDay + 1
+    ]
+  ]
+end
+
+;------------------------;
+;;; Price Computations ;;;
+;------------------------;
+to computeLocalPrices
+  ask hubs [
+    let my-houses houses with [ hubId = [who] of myself ]
+    let my-shops shops with [ hubId = [who] of myself ]
+    set localDemand sum[ item ticks consumption ] of my-houses + sum[item ticks consumption] of my-shops
+    set localSupply sum[ item ticks production] of my-houses
+    ifelse localDemand < localSupply [
+      set localSurplus localSupply - localDemand
+      set localLack 0
+    ] [
+      set localSurplus 0
+      set localLack localDemand - localSupply
+    ]
+ ;   set localPrice ? --- > some function to calculate price based on demand and supply
+  ]
+end
+
+to computeHubMarketPrice
+  set hubMarketSupply sum[localSurplus] of hubs
+  set hubMarketDemand sum[localLack] of hubs
+  ; set hubMarketPrice ? --- > some function to calculate price based on demand and supply
 
 end
+
+to computeFactoryMarketPrice
+  if hubMarketSupply < hubMarketDemand [
+    let hubMarketExcessDemand hubMarketDemand - hubMarketSupply
+    ; set factoryMarketPrice ? ----> some function to calculate price based on demand
+  ]
+end
+
+;-------------------------;
+;;; Energy Distribution ;;;
+;-------------------------;
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;     Updates     ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
+to house-consumptionAdjustment ; at the end of the week, each house adjusts its consumption according to the last week's expenses
+
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
+213
 10
-969
+972
 770
 -1
 -1
@@ -159,17 +236,17 @@ number-houses
 number-houses
 15
 100
-65.0
+38.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-62
-115
-129
-148
+29
+210
+96
+243
 NIL
 setup
 NIL
@@ -191,26 +268,76 @@ number-hubs
 number-hubs
 1
 10
-9.0
+5.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-15
-156
-187
-189
+23
+117
+195
+150
 number-shops
 number-shops
 0
 100
-51.0
+33.0
 1
 1
 NIL
 HORIZONTAL
+
+BUTTON
+106
+210
+169
+243
+NIL
+go
+T
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+MONITOR
+26
+275
+90
+320
+weekDay
+weekDay
+17
+1
+11
+
+MONITOR
+24
+330
+133
+375
+NIL
+hubMarketSupply
+17
+1
+11
+
+MONITOR
+25
+386
+142
+431
+NIL
+hubMarketDemand
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
