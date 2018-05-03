@@ -2,6 +2,7 @@ globals [
   hubMarketPrice
   hubMarketSupply
   hubMarketDemand
+  hubMarketExcessDemand
   factoryMarketPrice
   weekDay
 ]
@@ -18,7 +19,7 @@ houses-own [
   consumption
   production
   hubId
-  priceSensitivity
+  budgetList
   priceMemoryList
 ]
 
@@ -66,10 +67,11 @@ to make-houses
     set shape "house"
     set hubId random number-hubs
     set color green
-    set consumption [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+    set budgetList [2 10 5 20 2]    ; [dawn morning day evening night]
+    set priceMemoryList [0 0 0 0 0] ; [dawn morning day evening night]
+    set consumption [1 1 1 1 1 1 1 1 1 1 1.5 1.5 1.5 1.5 1.5 1.5 1.5 1 1 1 1 1 1 1]
+    personalizeConsumption consumption
     set production [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
-   ; set priceSensitivity -> !!
-   ; set priceMemoryList-> initialize with 0 here?
   ]
   layout-circle sort-by [ [a b] -> [hubId] of a < [hubId] of b ] houses max-pxcor - 1
   ask houses [
@@ -77,6 +79,66 @@ to make-houses
     create-activeLinks-to my-hub
     create-activeLinks-from my-hub
   ]
+end
+
+to personalizeConsumption [cons]
+  ; determine breakfast & dinner peaktimes (normal distribution)
+  let breakfastTime random-normal 8 1.5
+  let dinnerTime random-normal 20 2
+  ; determine length of increased energy consumption periods (normal distribution)
+  let breakfastDuration random-normal 1.5 1
+  let dinnerDuration random-normal 3 2
+  ; determine height of the peak in KW -> https://jaiminshahblog.wordpress.com/
+  let breakfastConsumption random-normal 3 1
+  let dinnerConsumption random-normal 7.5 2
+
+  ; personalize consumption list
+  ; BREAKFAST
+  let breakfastBeginning breakfastTime - breakfastDuration / 2
+  let breakfastCounter 0
+  repeat floor (breakfastDuration / 2) [
+    set cons replace-item (breakfastBeginning + breakfastCounter) cons (breakfastConsumption / ( breakfastDuration - 1 ) * (breakfastCounter + 1))
+    set breakfastCounter breakfastCounter + 1
+  ]
+  set cons replace-item (breakfastTime - 1) cons breakfastConsumption
+  set breakfastCounter 1
+  repeat breakfastDuration / 2 [
+    set cons replace-item (breakfastTime + breakfastCounter) cons (breakfastConsumption - (breakfastConsumption / ( breakfastDuration - 1 ) * (breakfastCounter + 1)))
+    set breakfastCounter breakfastCounter + 1
+  ]
+  ; DINNER
+  let dinnerBeginning dinnerTime - dinnerDuration / 2
+  let dinnerCounter 1
+  repeat floor (dinnerDuration / 2) [
+    set cons replace-item (dinnerBeginning + dinnerCounter) cons (dinnerConsumption / ( dinnerDuration - 1 ) * (dinnerCounter + 1))
+    set dinnerCounter dinnerCounter + 1
+  ]
+  ifelse dinnerTime < 25 [
+    set cons replace-item (dinnerTime - 1) cons dinnerConsumption
+  ][
+    set cons replace-item (dinnerTime - 25) cons dinnerConsumption
+  ]
+
+  set dinnerCounter 1
+  repeat dinnerDuration / 2 [
+    let timeToSet (dinnerTime + dinnerCounter)
+    if timeToSet > 23 [set timeToSet timeToSet - 24]
+    set cons replace-item timeToSet cons (dinnerConsumption - (dinnerConsumption / ( dinnerDuration - 1 ) * (dinnerCounter + 1)))
+    set dinnerCounter dinnerCounter + 1
+  ]
+  show "breakfastTime"
+  show breakfastTime
+  show "dinnerTime"
+  show  dinnerTime
+  show "breakfastDuration"
+  show  breakfastDuration
+  show "dinnerDuration"
+  show dinnerDuration
+  show "breakfastConsumption"
+  show breakfastConsumption
+  show "dinnerConsumption"
+  show dinnerConsumption
+  show cons
 end
 
 to make-shops
@@ -138,9 +200,8 @@ to go
   computeHubMarketPrice
   computeFactoryMarketPrice
 
-;  localEnergyDistribution
-;  hubMarketEnergyDistribution
-;  factoryEnergyDistribution
+  energyDistribution
+
   tick
   if ticks > 23 [     ; ticks simulate the time/hour -> reset to 0 when end of day (24h) is reached
     reset-ticks
@@ -160,7 +221,7 @@ to computeLocalPrices
   ask hubs [
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
-    set localDemand sum[ item ticks consumption ] of my-houses + sum[item ticks consumption] of my-shops
+    set localDemand sum[ item ticks consumption ] of my-houses + sum[item ticks consumption] of my-shops ; insert randomness
     set localSupply sum[ item ticks production] of my-houses
     ifelse localDemand < localSupply [
       set localSurplus localSupply - localDemand
@@ -169,7 +230,7 @@ to computeLocalPrices
       set localSurplus 0
       set localLack localDemand - localSupply
     ]
- ;   set localPrice ? --- > some function to calculate price based on demand and supply
+ ;   set localPrice ? --- > some function to calculate price based on demand and supply (maybe just focus on difference between the 2 variables?!)
   ]
 end
 
@@ -181,17 +242,23 @@ to computeHubMarketPrice
 end
 
 to computeFactoryMarketPrice
-  if hubMarketSupply < hubMarketDemand [
-    let hubMarketExcessDemand hubMarketDemand - hubMarketSupply
+  ifelse hubMarketSupply < hubMarketDemand [
+    set hubMarketExcessDemand hubMarketDemand - hubMarketSupply
     ; set factoryMarketPrice ? ----> some function to calculate price based on demand
+  ][
+    set hubMarketExcessDemand 0
   ]
 end
 
 ;-------------------------;
 ;;; Energy Distribution ;;;
 ;-------------------------;
-
-
+to energyDistribution
+  ask hubs [
+    ; distribute 1. local energy, 2. hub energy, 3. factory energy
+    ; every house needs to track expenditures on energy per hour!, shops just don't care
+  ]
+end
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;     Updates     ;;;
@@ -201,9 +268,9 @@ to house-consumptionAdjustment ; at the end of the week, each house adjusts its 
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-213
+388
 10
-972
+1147
 770
 -1
 -1
@@ -243,10 +310,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-29
-210
-96
-243
+234
+53
+301
+86
 NIL
 setup
 NIL
@@ -290,10 +357,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-106
-210
-169
-243
+235
+101
+298
+134
 NIL
 go
 T
@@ -307,10 +374,10 @@ NIL
 1
 
 MONITOR
-26
-275
-90
-320
+29
+215
+145
+260
 weekDay
 weekDay
 17
@@ -318,10 +385,10 @@ weekDay
 11
 
 MONITOR
-24
-330
-133
-375
+27
+270
+146
+315
 NIL
 hubMarketSupply
 17
@@ -329,12 +396,52 @@ hubMarketSupply
 11
 
 MONITOR
-25
-386
-142
-431
+28
+326
+145
+371
 NIL
 hubMarketDemand
+17
+1
+11
+
+PLOT
+28
+401
+332
+586
+Factory Production
+time
+price
+0.0
+24.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot hubMarketExcessDemand"
+
+MONITOR
+156
+216
+331
+261
+Current Hub Market Price
+hubMarketPrice
+17
+1
+11
+
+MONITOR
+158
+271
+331
+316
+Current Factory Market Price
+factoryMarketPrice
 17
 1
 11
