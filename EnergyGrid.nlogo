@@ -94,23 +94,35 @@ to personalizeConsumption [cons]
 
   ; personalize consumption list
   ; BREAKFAST
+
   let breakfastBeginning breakfastTime - breakfastDuration / 2
   let breakfastCounter 0
+  let timeToSet breakfastBeginning
   repeat floor (breakfastDuration / 2) [
+    set timeToSet (breakfastBeginning + breakfastCounter)
+    if timeToSet < 0 [set timeToSet (24 + timeToSet)]
+    if timeToSet > 23 [set timeToSet (timeToSet - 24)]
     set cons replace-item (breakfastBeginning + breakfastCounter) cons (breakfastConsumption / ( breakfastDuration - 1 ) * (breakfastCounter + 1))
     set breakfastCounter breakfastCounter + 1
   ]
   set cons replace-item (breakfastTime - 1) cons breakfastConsumption
-  set breakfastCounter 1
+  set breakfastCounter 0
   repeat breakfastDuration / 2 [
-    set cons replace-item (breakfastTime + breakfastCounter) cons (breakfastConsumption - (breakfastConsumption / ( breakfastDuration - 1 ) * (breakfastCounter + 1)))
+    set timeToSet (breakfastBeginning + breakfastCounter) ; Make function
+    if timeToSet < 0 [set timeToSet (24 + timeToSet)]
+    if timeToSet > 23 [set timeToSet (timeToSet - 24)]
+    set cons replace-item (timeToSet) cons (breakfastConsumption - (breakfastConsumption / ( breakfastDuration - 1 ) * (breakfastCounter + 1)))
     set breakfastCounter breakfastCounter + 1
   ]
   ; DINNER
   let dinnerBeginning dinnerTime - dinnerDuration / 2
-  let dinnerCounter 1
+  let dinnerCounter 0
+  set timeToSet dinnerBeginning
   repeat floor (dinnerDuration / 2) [
-    set cons replace-item (dinnerBeginning + dinnerCounter) cons (dinnerConsumption / ( dinnerDuration - 1 ) * (dinnerCounter + 1))
+    set timeToSet (dinnerBeginning + dinnerCounter - 1)
+    if timeToSet < 0 [set timeToSet (24 + timeToSet)]
+    if timeToSet > 23 [set timeToSet (timeToSet - 24)]
+    set cons replace-item (timeToSet) cons (dinnerConsumption / ( dinnerDuration - 1 ) * (dinnerCounter + 1))
     set dinnerCounter dinnerCounter + 1
   ]
   ifelse dinnerTime < 25 [
@@ -119,9 +131,11 @@ to personalizeConsumption [cons]
     set cons replace-item (dinnerTime - 25) cons dinnerConsumption
   ]
 
-  set dinnerCounter 1
+  set dinnerCounter 0
   repeat dinnerDuration / 2 [
-    let timeToSet (dinnerTime + dinnerCounter)
+    set timeToSet (dinnerBeginning + dinnerCounter) ; Check!
+    if timeToSet < 0 [set timeToSet (24 + timeToSet)]
+    if timeToSet > 23 [set timeToSet (timeToSet - 24)]
     if timeToSet > 23 [set timeToSet timeToSet - 24]
     set cons replace-item timeToSet cons (dinnerConsumption - (dinnerConsumption / ( dinnerDuration - 1 ) * (dinnerCounter + 1)))
     set dinnerCounter dinnerCounter + 1
