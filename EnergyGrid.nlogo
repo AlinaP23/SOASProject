@@ -67,11 +67,15 @@ to make-houses
     set shape "house"
     set hubId random number-hubs
     set color green
-    set budgetList [2 10 5 20 2]    ; [dawn morning day evening night]
-    set priceMemoryList [0 0 0 0 0] ; [dawn morning day evening night]
+    set priceMemoryList [0 0] ; [beforeNoon afterNoon]
+    set production [0 0 0 0 0 0 0.5 1 2 3 4 5 6 5 4 3 2 1 0.5 0 0 0 0 0] ; expecting sunrise around 6am and sunset around 6pm
     set consumption [1 1 1 1 1 1 1 1 1 1 1.5 1.5 1.5 1.5 1.5 1.5 1.5 1 1 1 1 1 1 1]
-    personalizeConsumption consumption
-    set production [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+    set consumption personalizeConsumption consumption
+    set budgetList personalizeBudgetList consumption ; [beforeNoon afterNoon]
+    show "consumption"
+    show consumption
+    show "budgetList"
+    show budgetList
   ]
   layout-circle sort-by [ [a b] -> [hubId] of a < [hubId] of b ] houses max-pxcor - 1
   ask houses [
@@ -81,37 +85,38 @@ to make-houses
   ]
 end
 
-to personalizeConsumption [cons]
+to-report personalizeConsumption [cons]
   ; determine breakfast & dinner peaktimes (normal distribution)
   let breakfastTime random-normal 8 1.5
+  if breakfastTime < 0 [set breakfastTime 0]
   let dinnerTime random-normal 20 2
+  if dinnerTime < 0 [set dinnerTime 0]
   ; determine length of increased energy consumption periods (normal distribution)
   let breakfastDuration random-normal 1.5 1
+  if breakfastDuration < 0 [set breakfastDuration 0]
   let dinnerDuration random-normal 3 2
+  if dinnerDuration < 0 [set dinnerDuration 0]
   ; determine height of the peak in KW -> https://jaiminshahblog.wordpress.com/
   let breakfastConsumption random-normal 3 1
+  if breakfastConsumption < 0 [set breakfastConsumption 0]
   let dinnerConsumption random-normal 7.5 2
+  if dinnerConsumption < 0 [set dinnerConsumption 0]
 
   ; personalize consumption list
   ; BREAKFAST
-
   let breakfastBeginning breakfastTime - breakfastDuration / 2
   let breakfastCounter 0
   let timeToSet breakfastBeginning
   repeat floor (breakfastDuration / 2) [
-    set timeToSet (breakfastBeginning + breakfastCounter)
-    if timeToSet < 0 [set timeToSet (24 + timeToSet)]
-    if timeToSet > 23 [set timeToSet (timeToSet - 24)]
-    set cons replace-item (breakfastBeginning + breakfastCounter) cons (breakfastConsumption / ( breakfastDuration - 1 ) * (breakfastCounter + 1))
+    set timeToSet adjustTo24Hours (breakfastBeginning + breakfastCounter)
+    set cons replace-item timeToSet cons (breakfastConsumption / ( breakfastDuration - 1 ) * (breakfastCounter + 1))
     set breakfastCounter breakfastCounter + 1
   ]
   set cons replace-item (breakfastTime - 1) cons breakfastConsumption
   set breakfastCounter 0
   repeat breakfastDuration / 2 [
-    set timeToSet (breakfastBeginning + breakfastCounter) ; Make function
-    if timeToSet < 0 [set timeToSet (24 + timeToSet)]
-    if timeToSet > 23 [set timeToSet (timeToSet - 24)]
-    set cons replace-item (timeToSet) cons (breakfastConsumption - (breakfastConsumption / ( breakfastDuration - 1 ) * (breakfastCounter + 1)))
+    set timeToSet adjustTo24Hours (breakfastTime + breakfastCounter)
+    set cons replace-item timeToSet cons (breakfastConsumption - (breakfastConsumption / ( breakfastDuration - 1 ) * (breakfastCounter + 1)))
     set breakfastCounter breakfastCounter + 1
   ]
   ; DINNER
@@ -119,10 +124,8 @@ to personalizeConsumption [cons]
   let dinnerCounter 0
   set timeToSet dinnerBeginning
   repeat floor (dinnerDuration / 2) [
-    set timeToSet (dinnerBeginning + dinnerCounter - 1)
-    if timeToSet < 0 [set timeToSet (24 + timeToSet)]
-    if timeToSet > 23 [set timeToSet (timeToSet - 24)]
-    set cons replace-item (timeToSet) cons (dinnerConsumption / ( dinnerDuration - 1 ) * (dinnerCounter + 1))
+    set timeToSet adjustTo24Hours (dinnerBeginning + dinnerCounter)
+    set cons replace-item timeToSet cons (dinnerConsumption / ( dinnerDuration - 1 ) * (dinnerCounter + 1))
     set dinnerCounter dinnerCounter + 1
   ]
   ifelse dinnerTime < 25 [
@@ -130,29 +133,40 @@ to personalizeConsumption [cons]
   ][
     set cons replace-item (dinnerTime - 25) cons dinnerConsumption
   ]
-
   set dinnerCounter 0
   repeat dinnerDuration / 2 [
-    set timeToSet (dinnerBeginning + dinnerCounter) ; Check!
-    if timeToSet < 0 [set timeToSet (24 + timeToSet)]
-    if timeToSet > 23 [set timeToSet (timeToSet - 24)]
-    if timeToSet > 23 [set timeToSet timeToSet - 24]
+    set timeToSet adjustTo24Hours (dinnerTime + dinnerCounter)
     set cons replace-item timeToSet cons (dinnerConsumption - (dinnerConsumption / ( dinnerDuration - 1 ) * (dinnerCounter + 1)))
     set dinnerCounter dinnerCounter + 1
   ]
-  show "breakfastTime"
-  show breakfastTime
-  show "dinnerTime"
-  show  dinnerTime
-  show "breakfastDuration"
-  show  breakfastDuration
-  show "dinnerDuration"
-  show dinnerDuration
-  show "breakfastConsumption"
-  show breakfastConsumption
-  show "dinnerConsumption"
-  show dinnerConsumption
-  show cons
+  report cons
+end
+
+to-report adjustTo24Hours [time]
+  if time < 0 [set time (24 + time)]
+  if time > 23 [set time (time - 24)]
+  report time
+end
+
+to-report personalizeBudgetList [consumptionList]
+  let sumBeforeNoon sum sublist consumptionList 0 12
+  let sumAfterNoon sum sublist consumptionList 12 24
+  let priceLevel random 3
+  let budget [0 0]
+  ifelse priceLevel = 0 [
+    set sumBeforeNoon (sumBeforeNoon * 1)
+    set sumAfterNoon (sumAfterNoon * 1)
+  ][  ifelse priceLevel = 1 [
+      set sumBeforeNoon (sumBeforeNoon * 1.5)
+      set sumAfterNoon (sumAfterNoon * 1.5)
+    ][
+      set sumBeforeNoon (sumBeforeNoon * 2)
+      set sumAfterNoon (sumAfterNoon * 2)
+    ]
+  ]
+  set budget replace-item 0 budget sumBeforeNoon
+  set budget replace-item 1 budget sumAfterNoon
+  report budget
 end
 
 to make-shops
@@ -162,12 +176,12 @@ to make-shops
     set hubId random number-hubs
     set color green
     set consumptionLevel random 3
-    ifelse consumptionLevel = 1 [
-      set consumption [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
-    ] [ ifelse consumptionLevel = 2 [
-        set consumption [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+    ifelse consumptionLevel = 0 [
+      set consumption [1 1 1 1 1 1 1 1.2 1.5 1.8 2 2 2 2 2 2 2 2 2 1.8 1.7 1.5 1.1 1]
+    ] [ ifelse consumptionLevel = 1 [
+        set consumption [1 1 1 1 1 1 1 2 3.5 4.2 5 5 5 5 5 5 5 5 5 4.2 3.8 3.3 2 1]
       ][
-        set consumption [0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23]
+        set consumption [1 1 1 1 1 1 1 2.3 4.3 5.9 7 7 7 7 7 7 7 7 7 5.9 4.5 3.5 2.2 1]
       ]
     ]
   ]
@@ -210,9 +224,9 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;
 
 to go
-  computeLocalPrices
-  computeHubMarketPrice
-  computeFactoryMarketPrice
+  computeLocalPrices            ; initially: 1€
+  computeHubMarketPrice         ; initially: 1.5€
+  computeFactoryMarketPrice     ; initially: 2€
 
   energyDistribution
 
@@ -221,7 +235,7 @@ to go
     reset-ticks
     ifelse weekDay = 7 [
       set weekDay 1
-      house-consumptionAdjustment
+      houseConsumptionAdjustment
     ] [
       set weekDay weekDay + 1
     ]
@@ -277,7 +291,7 @@ end
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;;;     Updates     ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
-to house-consumptionAdjustment ; at the end of the week, each house adjusts its consumption according to the last week's expenses
+to houseConsumptionAdjustment ; at the end of the week, each house adjusts its consumption according to the last week's expenses
 
 end
 @#$#@#$#@
