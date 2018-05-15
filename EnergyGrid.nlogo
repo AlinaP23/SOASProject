@@ -246,33 +246,41 @@ end
 ;;; Price Computations ;;;
 ;------------------------;
 to computeLocalPrices
+  ; calculate price based on demand and supply on the local markets (maybe just focus on difference between the 2 variables?!)
   ask hubs [
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
-    set localDemand sum[ item ticks consumption ] of my-houses + sum[item ticks consumption] of my-shops ; insert randomness
+    set localDemand sum[ item ticks consumption ] of my-houses + sum[item ticks consumption] of my-shops
     set localSupply sum[ item ticks production] of my-houses
     ifelse localDemand < localSupply [
       set localSurplus localSupply - localDemand
       set localLack 0
+      ; set localPrice 1 - (0.5 * ??) --> below 1€ (above 0.5€?)
     ] [
       set localSurplus 0
       set localLack localDemand - localSupply
+      ; set localPrice 1 + (0.5 * ??) --> above 1€ (below 1.5€?!)
     ]
- ;   set localPrice ? --- > some function to calculate price based on demand and supply (maybe just focus on difference between the 2 variables?!)
+
   ]
 end
 
 to computeHubMarketPrice
+  ; calculate price based on demand and supply on the hub market
   set hubMarketSupply sum[localSurplus] of hubs
   set hubMarketDemand sum[localLack] of hubs
-  ; set hubMarketPrice ? --- > some function to calculate price based on demand and supply
-
+  ifelse hubMarketDemand < hubMarketSupply [
+   ; set hubMarketPrice 1.5 - (0.5 * ??) --> below 1.5€ (above 1€?!)
+  ][
+   ; set hubMarketPrice 1.5 + (0.5 * ??) --> above 1.5€ (below 2€?!)
+  ]
 end
 
 to computeFactoryMarketPrice
+  ; calculate price based on (excess) demand of the hubs
   ifelse hubMarketSupply < hubMarketDemand [
     set hubMarketExcessDemand hubMarketDemand - hubMarketSupply
-    ; set factoryMarketPrice ? ----> some function to calculate price based on demand
+    ; set factoryMarketPrice 2 + (0.5 * ??) --> only 2€ or above?
   ][
     set hubMarketExcessDemand 0
   ]
