@@ -229,7 +229,6 @@ to go
   computeHubMarketPrice         ; initially: 1.5€
   computeFactoryMarketPrice     ; initially: 2€
 
-
   energyDistribution
 
   tick
@@ -238,7 +237,7 @@ to go
     ifelse weekDay = 7 [
       set weekDay 1
       houseConsumptionAdjustment
-    ] [
+    ][
       set weekDay weekDay + 1
     ]
   ]
@@ -248,7 +247,9 @@ end
 ;;; Price Computations ;;;
 ;------------------------;
 to computeLocalPrices
-  ; calculate price based on demand and supply on the local markets (maybe just focus on difference between the 2 variables?!)
+  ; calculate price based on demand and supply on the local markets (focus on difference between the 2 variables)
+  let localSurplusThreshold 100
+  let localLackThreshold 100
   ask hubs [
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
@@ -257,34 +258,61 @@ to computeLocalPrices
     ifelse localDemand < localSupply [
       set localSurplus localSupply - localDemand
       set localLack 0
-      ; set localPrice 1 - (0.5 * ??) --> below 1€ (above 0.5€?)
-    ] [
+      ifelse localSurplus > localSurplusThreshold [
+        set localPrice 0.5        ; set price to minimum if surplus above threshold
+      ][
+        set localPrice 1 - (0.5 * (localSurplus / localSurplusThreshold)) ; --> below 1€ (above 0.5€)
+      ]
+    ][
       set localSurplus 0
       set localLack localDemand - localSupply
-      ; set localPrice 1 + (0.5 * ??) --> above 1€ (below 1.5€?!)
+      ifelse localSurplus > localLackThreshold [
+        set localPrice 1.5        ; set price to maximum if lack above threshold
+      ][
+        set localPrice 1 + (0.5 * (localLack / localLackThreshold)) ; --> above 1€ (below 1.5€)
+      ]
     ]
-
   ]
 end
 
 to computeHubMarketPrice
   ; calculate price based on demand and supply on the hub market
+  let hubMarketSurplusThreshold 100
+  let hubMarketLackThreshold 100
   set hubMarketSupply sum[localSurplus] of hubs
   set hubMarketDemand sum[localLack] of hubs
   ifelse hubMarketDemand < hubMarketSupply [
-   ; set hubMarketPrice 1.5 - (0.5 * ??) --> below 1.5€ (above 1€?!)
+    ; price reduction due to surplus
+    let hubMarketSurplus hubMarketSupply - hubMarketDemand
+    ifelse hubMarketSurplus > hubMarketSurplusThreshold [
+      set hubMarketPrice 1       ; set price to minimum if surplus above threshold
+    ][
+      set hubMarketPrice 1.5 - (0.5 * (hubMarketSurplus / hubMarketSurplusThreshold)) ; --> below 1.5€ (above 1€)
+    ]
   ][
-   ; set hubMarketPrice 1.5 + (0.5 * ??) --> above 1.5€ (below 2€?!)
+    ; price increase due to lack
+    let hubMarketLack hubMarketDemand - hubMarketSupply
+    ifelse hubMarketLack > hubMarketLackThreshold [
+      set hubMarketPrice 2        ; set price to maximum if lack above threshold
+    ][
+      set hubMarketPrice 1.5 + (0.5 * (hubMarketLack / hubMarketLackThreshold)) ; --> above 1.5€ (below 2€)
+    ]
   ]
 end
 
 to computeFactoryMarketPrice
   ; calculate price based on (excess) demand of the hubs
+  let hubMarketExcessDemandThreshold 100
   ifelse hubMarketSupply < hubMarketDemand [
     set hubMarketExcessDemand hubMarketDemand - hubMarketSupply
-    ; set factoryMarketPrice 2 + (0.5 * ??) --> only 2€ or above?
+    ifelse hubMarketExcessDemand > hubMarketExcessDemandThreshold [
+      set factoryMarketPrice 2.5 ; set price to maximum if excess demand above threshold
+    ][
+      set factoryMarketPrice 2 + (0.5 * (hubMarketExcessDemand / hubMarketExcessDemandThreshold)) ; --> only 2€ or above
+    ]
   ][
     set hubMarketExcessDemand 0
+    set factoryMarketPrice 2
   ]
 end
 
@@ -298,20 +326,20 @@ to energyDistribution
 
     ; 1) Use agent-set: Go through houses and shops with same hub-id as the hubs who-number
     ; and get their energy level
-    ; Find and record persentage of coverage.
+    ; Find and record percentage of coverage.
 
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
     set localDemand sum [item ticks consumption] of my-houses + sum [consumption] of my-shops ; correct use of supply and demand?
     set localSupply sum [item ticks production] of my-houses
-    set localCoverage localSupply / localDemand     ; >1 if surpluss of energy
+    set localCoverage localSupply / localDemand     ; >1 if surplus of energy
   ]
 
     ; 2) Use agent-set: Go through hubs and check their energy levels.
-    ; Find persentage coverage:
-    ; if less than 1: charge this persentage of each hubs request for energy with hub-prize, pay each hub for all their provided energy
-    ;    then charge the remaining persentage of the hubs requests with factory prize and record factory use.
-    ; else: charge all required energy of each hub with hub-prize and pay the persentage - 1 of each hub for their provided energy.
+    ; Find percentage coverage:
+    ; if less than 1: charge this percentage of each hubs request for energy with hub-prize, pay each hub for all their provided energy
+    ;    then charge the remaining percentage of the hubs requests with factory prize and record factory use.
+    ; else: charge all required energy of each hub with hub-prize and pay the percentage - 1 of each hub for their provided energy.
 
   let totalDemand sum [localDemand] of hubs
   let totalSupply sum [localSupply] of hubs
@@ -325,8 +353,8 @@ to energyDistribution
 
   ask hubs [
     ; 3) Use agent-set: Go through houses and shops with same hub-id as the hubs who-number
-    ; Charge each house and shop with summed up prize (local*persentageL + hub*persentageH + fact*persentageF) per package
-    ; Pay each house for produced energy (local*persentageL + hub*persentageH) per package.
+    ; Charge each house and shop with summed up prize (local*percentageL + hub*percentageH + fact*percentageF) per package
+    ; Pay each house for produced energy (local*percentageL + hub*percentageH) per package.
 
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
@@ -394,7 +422,6 @@ to pay [prizeToPay]
 
 
 end
-
 @#$#@#$#@
 GRAPHICS-WINDOW
 388
@@ -432,7 +459,7 @@ number-houses
 number-houses
 15
 100
-38.0
+24.0
 1
 1
 NIL
@@ -464,7 +491,7 @@ number-hubs
 number-hubs
 1
 10
-5.0
+2.0
 1
 1
 NIL
@@ -479,7 +506,7 @@ number-shops
 number-shops
 0
 100
-33.0
+7.0
 1
 1
 NIL
