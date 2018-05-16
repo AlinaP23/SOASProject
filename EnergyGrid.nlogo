@@ -21,7 +21,6 @@ houses-own [
   hubId
   budgetList
   priceMemoryList
-  energyLevel ; added
 ]
 
 shops-own [
@@ -38,7 +37,7 @@ hubs-own [
   localSupply
   localDemand
   localPrice
-  localSurplus ; do we need this?
+  localSurplus ; what do we use this for?
   localLack
   localCoverage ; added
 ]
@@ -230,9 +229,6 @@ to go
   computeHubMarketPrice         ; initially: 1.5€
   computeFactoryMarketPrice     ; initially: 2€
 
-  ask houses [
-    set energyLevel (item ticks production - item ticks consumption)
-  ]
 
   energyDistribution
 
@@ -293,10 +289,8 @@ to energyDistribution
     ; every house needs to track expenditures on energy per hour!, shops just don't care
 
     ; 1) Use agent-set: Go through houses and shops with same hub-id as the hubs who-number
-    ; and get their energy level (positive = energy need to sell, negative = energy need to buy)
+    ; and get their energy level
     ; Find and record persentage of coverage.
-    ;
-    ; Sum restoring energy-level
 
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
@@ -315,6 +309,10 @@ to energyDistribution
   let totalSupply sum [localSupply] of hubs
   let totalCoverage totalSupply / totalDemand
 
+  ; Find current prices for the different tears
+  ;let localPrice computeLocalPrices
+  let hubPrice 1.5 ;computeHubMarketPrice  <------------------ Temporary!
+  let factPrize 2 ;computeFactoryMarketPrice <------------------ Temporary!
 
 
   ask hubs [
@@ -322,10 +320,56 @@ to energyDistribution
     ; Charge each house and shop with summed up prize (local*persentageL + hub*persentageH + fact*persentageF) per package
     ; Pay each house for produced energy (local*persentageL + hub*persentageH) per package.
 
+    let my-houses houses with [ hubId = [who] of myself ]
+    let my-shops shops with [ hubId = [who] of myself ]
+
     ;; Calculate combined payment for each house
-    ifelse totalCoverage < 1 ; to be continued
-    []
-    []
+
+    let locallyProvidedPart 0
+    let locallySoldPart 0
+    let hubProvidedPart 0
+    let factProvidedPart 0
+    let externSoldPart 0
+
+
+    ifelse localCoverage < 1
+    [ ; Energy must be bought from external seller(s)
+
+      set locallySoldPart 1  ; All locally produced energy sold in the local market
+      set locallyProvidedPart localCoverage ; What was not covered by locally produced energy had to be bought externally
+    ]
+    [ ; Surpluss of energy available for sale to external buyer(s)
+
+      set locallyProvidedPart 1 ; All locally consumed energy bought in the local market
+      set locallySoldPart localDemand / localSupply
+    ]
+
+    ifelse totalCoverage < 1
+    [ ; Energy must be bought from factory
+
+      let hubCoverage totalCoverage
+      let factCoverage 1 - totalCoverage ; <-------------------------- Maybe record this
+
+      set hubProvidedPart ( 1 - locallyProvidedPart ) * hubCoverage
+      set factProvidedPart (1 - locallyProvidedPart ) * factCoverage
+
+      set externSoldPart (1 - locallySoldPart) * ( totalDemand / totalSupply )
+
+    ]
+    [ ; Not all energy in system was used
+
+      set hubProvidedPart 1 - locallyProvidedPart ; Full hub coverage
+      set factProvidedPart 0
+
+      set externSoldPart ( 1 - locallySoldPart) * ( 2 - totalCoverage )
+    ]
+
+    ask my-houses [
+      let localPrize 1 ; <------------------ Temporary!
+      let energyLevel [item ticks consumption] of myself - [item ticks production] of myself
+      let prizeToPay energyLevel * ( localPrize * locallyProvidedPart +  hubProvidedPart * hubPrice + factProvidedPart * factPrize )
+      pay prizeToPay
+    ]
   ]
 end
 
@@ -335,6 +379,11 @@ end
 ;;;     Updates     ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 to houseConsumptionAdjustment ; at the end of the week, each house adjusts its consumption according to the last week's expenses
+
+end
+
+to pay [prizeToPay]
+
 
 end
 
