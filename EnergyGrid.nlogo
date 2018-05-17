@@ -8,6 +8,13 @@ globals [
   averageHouseholdConsumption
   averageHouseholdProduction
   averageShopConsumption
+  adjFactorUpperThreshold
+  adjFactorLowerThreshold
+  localSurplusThreshold
+  localLackThreshold
+  hubMarketSurplusThreshold
+  hubMarketLackThreshold
+  hubMarketExcessDemandThreshold
 ]
 
 directed-link-breed [activeLinks activeLink]
@@ -52,12 +59,23 @@ hubs-own [
 to setup
   clear-all
   reset-ticks
-  set weekDay 1
+
   ifelse number-houses < number-shops [
     display
     user-message "The number of houses must be greater than the number of shops."
     stop
   ][
+    ; set variables and constants
+    set weekDay 1
+    set adjFactorUpperThreshold 5
+    set adjFactorLowerThreshold 0
+    set localSurplusThreshold 100
+    set localLackThreshold 100
+    set hubMarketSurplusThreshold 100
+    set hubMarketLackThreshold 100
+    set hubMarketExcessDemandThreshold 100
+
+    ; initiate turtles
     make-hubs
     make-houses
     make-shops
@@ -257,8 +275,6 @@ end
 ;------------------------;
 to computeLocalPrices
   ; calculate price based on demand and supply on the local markets (focus on difference between the 2 variables)
-  let localSurplusThreshold 100
-  let localLackThreshold 100
   ask hubs [
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
@@ -286,8 +302,6 @@ end
 
 to computeHubMarketPrice
   ; calculate price based on demand and supply on the hub market
-  let hubMarketSurplusThreshold 100
-  let hubMarketLackThreshold 100
   set hubMarketSupply sum[localSurplus] of hubs
   set hubMarketDemand sum[localLack] of hubs
   ifelse hubMarketDemand < hubMarketSupply [
@@ -311,7 +325,6 @@ end
 
 to computeFactoryMarketPrice
   ; calculate price based on (excess) demand of the hubs
-  let hubMarketExcessDemandThreshold 100
   ifelse hubMarketSupply < hubMarketDemand [
     set hubMarketExcessDemand hubMarketDemand - hubMarketSupply
     ifelse hubMarketExcessDemand > hubMarketExcessDemandThreshold [
@@ -372,14 +385,11 @@ to energyDistribution
     let externSoldPart 0
 
 
-    ifelse localCoverage < 1
-    [ ; Energy must be bought from external seller(s)
-
+    ifelse localCoverage < 1 [ ; Energy must be bought from external seller(s)
       set locallySoldPart 1  ; All locally produced energy sold in the local market
       set locallyProvidedPart localCoverage ; What was not covered by locally produced energy had to be bought externally
-    ]
-    [ ; Surpluss of energy available for sale to external buyer(s)
-
+    ][
+      ; Surpluss of energy available for sale to external buyer(s)
       set locallyProvidedPart 1 ; All locally consumed energy bought in the local market
       ifelse localSupply = 0 [
         set locallySoldPart 0
@@ -388,13 +398,11 @@ to energyDistribution
       ]
     ]
 
-    ifelse totalCoverage < 1
-    [ ; Energy must be bought from factory
-
+    ifelse totalCoverage < 1 [ ; Energy must be bought from factory
       let hubCoverage totalCoverage
       let factCoverage 1 - totalCoverage ; <-------------------------- Maybe record this
 
-      set hubProvidedPart ( 1 - locallyProvidedPart ) * hubCoverage
+      set hubProvidedPart  (1 - locallyProvidedPart ) * hubCoverage
       set factProvidedPart (1 - locallyProvidedPart ) * factCoverage
 
       ifelse totalSupply = 0 [
@@ -403,8 +411,8 @@ to energyDistribution
         set externSoldPart (1 - locallySoldPart) * ( totalDemand / totalSupply )
       ]
 
-    ]
-    [ ; Not all energy in system was used
+    ][
+      ; Not all energy in system was used
 
       set hubProvidedPart 1 - locallyProvidedPart ; Full hub coverage
       set factProvidedPart 0
@@ -414,6 +422,7 @@ to energyDistribution
 
     ask my-houses [
       let energyLevel [item ticks consumption] of self - [item ticks production] of self
+      if energyLevel < 0 [ set energyLevel 0 ]
       let priceToPay energyLevel * ( [localPrice] of myself * locallyProvidedPart +  hubProvidedPart * hubMarketPrice + factProvidedPart * factoryMarketPrice )
       pay priceToPay
     ]
@@ -431,9 +440,16 @@ to houseConsumptionAdjustment ; at the end of the week, each house adjusts its c
   set priceMemoryList [0 0]
   let beforeNoonConsumptionAdjustmentFactor ( [item 0 budgetList] of self) / weeklyAvgBeforeNoon
   let afterNoonConsumptionAdjustmentFactor ( [item 1 budgetList] of self) / weeklyAvgAfterNoon
+  if beforeNoonConsumptionAdjustmentFactor > adjFactorUpperThreshold [set beforeNoonConsumptionAdjustmentFactor adjFactorUpperThreshold]
+  if beforeNoonConsumptionAdjustmentFactor < adjFactorLowerThreshold [set beforeNoonConsumptionAdjustmentFactor adjFactorLowerThreshold]
+  if afterNoonConsumptionAdjustmentFactor > adjFactorUpperThreshold [set afterNoonConsumptionAdjustmentFactor adjFactorUpperThreshold]
+  if afterNoonConsumptionAdjustmentFactor < adjFactorLowerThreshold [set afterNoonConsumptionAdjustmentFactor adjFactorLowerThreshold]
+
   show "weeklyAvg: before and after"
   show weeklyAvgBeforeNoon
   show weeklyAvgAfterNoon
+  show "budgetList"
+  show budgetList
   show "adjustmentFactors"
   show beforeNoonConsumptionAdjustmentFactor
   show afterNoonConsumptionAdjustmentFactor
@@ -446,6 +462,7 @@ to houseConsumptionAdjustment ; at the end of the week, each house adjusts its c
       ; adjust afternoon consumption
         set consumption replace-item counter consumption ([item counter consumption] of self * afterNoonConsumptionAdjustmentFactor)
     ]
+    set counter counter + 1
   ]
 end
 
@@ -609,14 +626,14 @@ PLOT
 586
 Factory Production
 time
-price
+production
 0.0
-24.0
+120.0
 0.0
-10.0
-true
+300.0
 false
-"" ""
+false
+"" "if weekDay = 5 and ticks = 0 [ set-plot-x-range (plot-x-min + 120) (plot-x-max + 120) ]"
 PENS
 "default" 1.0 0 -16777216 true "" "plot hubMarketExcessDemand"
 
@@ -651,12 +668,12 @@ Average Household Consumption
 tick
 consumption
 0.0
-24.0
+120.0
 0.0
 10.0
-true
 false
-"" ""
+false
+"" "if weekDay = 5 and ticks = 0 [ set-plot-x-range (plot-x-min + 120) (plot-x-max + 120) ]"
 PENS
 "default" 1.0 0 -16777216 true "" "plot averageHouseholdConsumption"
 "pen-1" 1.0 0 -2139308 true "" "plot averageShopConsumption"
