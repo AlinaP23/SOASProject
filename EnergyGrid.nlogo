@@ -8,6 +8,7 @@ globals [
   averageHouseholdConsumption
   averageHouseholdProduction
   averageShopConsumption
+  averageEarnings
   adjFactorUpperThreshold
   adjFactorLowerThreshold
   localSurplusThreshold
@@ -15,6 +16,7 @@ globals [
   hubMarketSurplusThreshold
   hubMarketLackThreshold
   hubMarketExcessDemandThreshold
+  clearSkyLevel
 ]
 
 directed-link-breed [activeLinks activeLink]
@@ -31,6 +33,7 @@ houses-own [
   hubId
   budgetList
   priceMemoryList
+  earningsMemory
 ]
 
 shops-own [
@@ -47,9 +50,9 @@ hubs-own [
   localSupply
   localDemand
   localPrice
-  localSurplus ; what do we use this for?
+  localSurplus
   localLack
-  localCoverage ; added
+  localCoverage
 ]
 
 ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -74,6 +77,11 @@ to setup
     set hubMarketSurplusThreshold 100
     set hubMarketLackThreshold 100
     set hubMarketExcessDemandThreshold 100
+    ifelse cloudiness [
+       set clearSkyLevel random-float 1
+    ][
+      set clearSkyLevel 1
+    ]
 
     ; initiate turtles
     make-hubs
@@ -94,6 +102,7 @@ to make-houses
     set consumption [1 1 1 1 1 1 1 1 1 1 1.5 1.5 1.5 1.5 1.5 1.5 1.5 1 1 1 1 1 1 1]
     set consumption personalizeConsumption consumption
     set budgetList personalizeBudgetList consumption ; [beforeNoon afterNoon]
+    set earningsMemory 0
     show "consumption"
     show consumption
     show "budgetList"
@@ -266,6 +275,13 @@ to go
       ]
     ][
       set weekDay weekDay + 1
+      set averageEarnings sum [earningsMemory] of houses / number-houses
+      ask houses [
+        set earningsMemory 0
+      ]
+      if cloudiness [
+        set clearSkyLevel random-float 1
+      ]
     ]
   ]
 end
@@ -279,7 +295,7 @@ to computeLocalPrices
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
     set localDemand sum[ item ticks consumption ] of my-houses + sum[item ticks consumption] of my-shops
-    set localSupply sum[ item ticks production] of my-houses
+    set localSupply sum[ item ticks production] of my-houses * clearSkyLevel
     ifelse localDemand < localSupply [
       set localSurplus localSupply - localDemand
       set localLack 0
@@ -353,7 +369,7 @@ to energyDistribution
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
     set localDemand sum [item ticks consumption] of my-houses + sum [consumption] of my-shops ; correct use of supply and demand?
-    set localSupply sum [item ticks production] of my-houses
+    set localSupply sum [item ticks production] of my-houses * clearSkyLevel
     set localCoverage localSupply / localDemand     ; >1 if surplus of energy
   ]
 
@@ -408,7 +424,7 @@ to energyDistribution
       ifelse totalSupply = 0 [
         set externSoldPart 0
       ][
-        set externSoldPart (1 - locallySoldPart) * ( totalDemand / totalSupply )
+        set externSoldPart (1 - locallySoldPart)
       ]
 
     ][
@@ -417,14 +433,18 @@ to energyDistribution
       set hubProvidedPart 1 - locallyProvidedPart ; Full hub coverage
       set factProvidedPart 0
 
-      set externSoldPart ( 1 - locallySoldPart) * ( 2 - totalCoverage )
+      set externSoldPart ( 1 - locallySoldPart) * ( totalDemand / totalSupply )
     ]
 
     ask my-houses [
-      let energyLevel [item ticks consumption] of self - [item ticks production] of self
-      if energyLevel < 0 [ set energyLevel 0 ]
-      let priceToPay energyLevel * ( [localPrice] of myself * locallyProvidedPart +  hubProvidedPart * hubMarketPrice + factProvidedPart * factoryMarketPrice )
-      pay priceToPay
+      let energyLevel [item ticks consumption] of self - [item ticks production] of self * clearSkyLevel
+      ifelse energyLevel < 0 [
+        let moneyEarned -1 * energyLevel * ([localPrice] of myself * locallySoldPart + externSoldPart * hubMarketPrice)
+        earn moneyEarned
+      ][
+        let priceToPay energyLevel * ( [localPrice] of myself * locallyProvidedPart +  hubProvidedPart * hubMarketPrice + factProvidedPart * factoryMarketPrice )
+        pay priceToPay
+      ]
     ]
   ]
 end
@@ -474,9 +494,13 @@ to pay [priceToPay]
   ]
 end
 
+to earn [moneyEarned]
+  set earningsMemory earningsMemory + moneyEarned
+end
+
 to calculateMonitoringVariables
   set averageHouseholdConsumption sum [item ticks consumption] of houses / number-houses
-  set averageHouseholdProduction sum [item ticks production] of houses / number-houses
+  set averageHouseholdProduction (sum [item ticks production] of houses * clearSkyLevel) / number-houses
   set averageShopConsumption sum [item ticks consumption] of shops / number-shops
 end
 @#$#@#$#@
@@ -609,10 +633,10 @@ hubMarketSupply
 11
 
 MONITOR
-28
-326
-145
-371
+27
+328
+148
+373
 NIL
 hubMarketDemand
 17
@@ -678,6 +702,39 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot averageHouseholdConsumption"
 "pen-1" 1.0 0 -2139308 true "" "plot averageShopConsumption"
 "pen-2" 1.0 0 -10899396 true "" "plot averageHouseholdProduction"
+
+MONITOR
+159
+328
+331
+373
+AverageEarnings
+AverageEarnings
+17
+1
+11
+
+SWITCH
+24
+163
+194
+196
+cloudiness
+cloudiness
+0
+1
+-1000
+
+MONITOR
+210
+161
+326
+206
+clear sky level (%)
+clearSkyLevel
+2
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
