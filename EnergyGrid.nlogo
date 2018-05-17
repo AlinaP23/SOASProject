@@ -5,6 +5,9 @@ globals [
   hubMarketExcessDemand
   factoryMarketPrice
   weekDay
+  averageHouseholdConsumption
+  averageHouseholdProduction
+  averageShopConsumption
 ]
 
 directed-link-breed [activeLinks activeLink]
@@ -155,14 +158,14 @@ to-report personalizeBudgetList [consumptionList]
   let priceLevel random 3
   let budget [0 0]
   ifelse priceLevel = 0 [
-    set sumBeforeNoon (sumBeforeNoon * 1)
-    set sumAfterNoon (sumAfterNoon * 1)
+    set sumBeforeNoon (sumBeforeNoon * 0.5)
+    set sumAfterNoon (sumAfterNoon * 0.5)
   ][  ifelse priceLevel = 1 [
+      set sumBeforeNoon (sumBeforeNoon * 1)
+      set sumAfterNoon (sumAfterNoon * 1)
+    ][
       set sumBeforeNoon (sumBeforeNoon * 1.5)
       set sumAfterNoon (sumAfterNoon * 1.5)
-    ][
-      set sumBeforeNoon (sumBeforeNoon * 2)
-      set sumAfterNoon (sumAfterNoon * 2)
     ]
   ]
   set budget replace-item 0 budget sumBeforeNoon
@@ -175,14 +178,16 @@ to make-shops
   [
     set shape "building store"
     set hubId random number-hubs
-    set color green
     set consumptionLevel random 3
     ifelse consumptionLevel = 0 [
       set consumption [1 1 1 1 1 1 1 1.2 1.5 1.8 2 2 2 2 2 2 2 2 2 1.8 1.7 1.5 1.1 1]
+      set color yellow
     ] [ ifelse consumptionLevel = 1 [
         set consumption [1 1 1 1 1 1 1 2 3.5 4.2 5 5 5 5 5 5 5 5 5 4.2 3.8 3.3 2 1]
+        set color orange
       ][
         set consumption [1 1 1 1 1 1 1 2.3 4.3 5.9 7 7 7 7 7 7 7 7 7 5.9 4.5 3.5 2.2 1]
+        set color red
       ]
     ]
   ]
@@ -229,6 +234,8 @@ to go
   computeHubMarketPrice         ; initially: 1.5€
   computeFactoryMarketPrice     ; initially: 2€
 
+  calculateMonitoringVariables
+
   energyDistribution
 
   tick
@@ -236,7 +243,9 @@ to go
     reset-ticks
     ifelse weekDay = 7 [
       set weekDay 1
-      houseConsumptionAdjustment
+      ask houses [
+        houseConsumptionAdjustment
+      ]
     ][
       set weekDay weekDay + 1
     ]
@@ -345,11 +354,6 @@ to energyDistribution
   let totalSupply sum [localSupply] of hubs
   let totalCoverage totalSupply / totalDemand
 
-  ; Find current prices for the different tears
-  ;let localPrice computeLocalPrices
-  let hubPrice 1.5 ;computeHubMarketPrice  <------------------ Temporary!
-  let factPrize 2 ;computeFactoryMarketPrice <------------------ Temporary!
-
 
   ask hubs [
     ; 3) Use agent-set: Go through houses and shops with same hub-id as the hubs who-number
@@ -377,7 +381,11 @@ to energyDistribution
     [ ; Surpluss of energy available for sale to external buyer(s)
 
       set locallyProvidedPart 1 ; All locally consumed energy bought in the local market
-      set locallySoldPart localDemand / localSupply
+      ifelse localSupply = 0 [
+        set locallySoldPart 0
+      ][
+        set locallySoldPart localDemand / localSupply
+      ]
     ]
 
     ifelse totalCoverage < 1
@@ -389,7 +397,11 @@ to energyDistribution
       set hubProvidedPart ( 1 - locallyProvidedPart ) * hubCoverage
       set factProvidedPart (1 - locallyProvidedPart ) * factCoverage
 
-      set externSoldPart (1 - locallySoldPart) * ( totalDemand / totalSupply )
+      ifelse totalSupply = 0 [
+        set externSoldPart 0
+      ][
+        set externSoldPart (1 - locallySoldPart) * ( totalDemand / totalSupply )
+      ]
 
     ]
     [ ; Not all energy in system was used
@@ -401,10 +413,9 @@ to energyDistribution
     ]
 
     ask my-houses [
-      let localPrize 1 ; <------------------ Temporary!
-      let energyLevel [item ticks consumption] of myself - [item ticks production] of myself
-      let prizeToPay energyLevel * ( localPrize * locallyProvidedPart +  hubProvidedPart * hubPrice + factProvidedPart * factPrize )
-      pay prizeToPay
+      let energyLevel [item ticks consumption] of self - [item ticks production] of self
+      let priceToPay energyLevel * ( [localPrice] of myself * locallyProvidedPart +  hubProvidedPart * hubMarketPrice + factProvidedPart * factoryMarketPrice )
+      pay priceToPay
     ]
   ]
 end
@@ -415,12 +426,41 @@ end
 ;;;     Updates     ;;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 to houseConsumptionAdjustment ; at the end of the week, each house adjusts its consumption according to the last week's expenses
-
+  let weeklyAvgBeforeNoon ( [item 0 priceMemoryList] of self / 7 )
+  let weeklyAvgAfterNoon ( [item 1 priceMemoryList] of self / 7 )
+  set priceMemoryList [0 0]
+  let beforeNoonConsumptionAdjustmentFactor ( [item 0 budgetList] of self) / weeklyAvgBeforeNoon
+  let afterNoonConsumptionAdjustmentFactor ( [item 1 budgetList] of self) / weeklyAvgAfterNoon
+  show "weeklyAvg: before and after"
+  show weeklyAvgBeforeNoon
+  show weeklyAvgAfterNoon
+  show "adjustmentFactors"
+  show beforeNoonConsumptionAdjustmentFactor
+  show afterNoonConsumptionAdjustmentFactor
+  let counter 0
+  repeat 24 [
+    ifelse counter < 12 [
+      ; adjust consumption before noon
+      set consumption replace-item counter consumption ([item counter consumption] of self * beforeNoonConsumptionAdjustmentFactor)
+    ][
+      ; adjust afternoon consumption
+        set consumption replace-item counter consumption ([item counter consumption] of self * afterNoonConsumptionAdjustmentFactor)
+    ]
+  ]
 end
 
-to pay [prizeToPay]
+to pay [priceToPay]
+  ifelse ticks < 12 [
+    set priceMemoryList replace-item 0 priceMemoryList ([item 0 priceMemoryList] of self + priceToPay)
+  ][
+    set priceMemoryList replace-item 1 priceMemoryList ([item 1 priceMemoryList] of self + priceToPay)
+  ]
+end
 
-
+to calculateMonitoringVariables
+  set averageHouseholdConsumption sum [item ticks consumption] of houses / number-houses
+  set averageHouseholdProduction sum [item ticks production] of houses / number-houses
+  set averageShopConsumption sum [item ticks consumption] of shops / number-shops
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -459,7 +499,7 @@ number-houses
 number-houses
 15
 100
-24.0
+59.0
 1
 1
 NIL
@@ -491,7 +531,7 @@ number-hubs
 number-hubs
 1
 10
-2.0
+5.0
 1
 1
 NIL
@@ -506,7 +546,7 @@ number-shops
 number-shops
 0
 100
-7.0
+23.0
 1
 1
 NIL
@@ -601,6 +641,26 @@ factoryMarketPrice
 17
 1
 11
+
+PLOT
+28
+600
+331
+750
+Average Household Consumption
+tick
+consumption
+0.0
+24.0
+0.0
+10.0
+true
+false
+"" ""
+PENS
+"default" 1.0 0 -16777216 true "" "plot averageHouseholdConsumption"
+"pen-1" 1.0 0 -2139308 true "" "plot averageShopConsumption"
+"pen-2" 1.0 0 -10899396 true "" "plot averageHouseholdProduction"
 
 @#$#@#$#@
 ## WHAT IS IT?
