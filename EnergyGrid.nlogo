@@ -9,13 +9,13 @@ globals [
   averageHouseholdProduction
   averageShopConsumption
   averageEarnings
-  adjFactorUpperThreshold
-  adjFactorLowerThreshold
-  localSurplusThreshold
-  localLackThreshold
-  hubMarketSurplusThreshold
-  hubMarketLackThreshold
-  hubMarketExcessDemandThreshold
+  ;adjFactorUpperThreshold
+  ;adjFactorUpperThresholdadjFactorLowerThreshold
+  ;localSurplusThreshold
+  ;localLackThreshold
+  ;hubMarketSurplusThreshold
+  ;hubMarketLackThreshold
+  ;hubMarketExcessDemandThreshold
   clearSkyLevel
 ]
 
@@ -70,13 +70,13 @@ to setup
   ][
     ; set variables and constants
     set weekDay 1
-    set adjFactorUpperThreshold 5
-    set adjFactorLowerThreshold 0
-    set localSurplusThreshold 100
-    set localLackThreshold 100
-    set hubMarketSurplusThreshold 100
-    set hubMarketLackThreshold 100
-    set hubMarketExcessDemandThreshold 100
+    ;set adjFactorUpperThreshold 5
+    ;set adjFactorLowerThreshold 0
+    ;set localSurplusThreshold 100
+    ;set localLackThreshold 100
+    ;set hubMarketSurplusThreshold 100
+    ;set hubMarketLackThreshold 100
+    ;set hubMarketExcessDemandThreshold 100
     ifelse cloudiness [
        set clearSkyLevel random-float 1
     ][
@@ -103,10 +103,10 @@ to make-houses
     set consumption personalizeConsumption consumption
     set budgetList personalizeBudgetList consumption ; [beforeNoon afterNoon]
     set earningsMemory 0
-    show "consumption"
-    show consumption
-    show "budgetList"
-    show budgetList
+    ;show "consumption"
+    ;show consumption
+    ;show "budgetList"
+    ;show budgetList
   ]
   layout-circle sort-by [ [a b] -> [hubId] of a < [hubId] of b ] houses max-pxcor - 1
   ask houses [
@@ -465,14 +465,14 @@ to houseConsumptionAdjustment ; at the end of the week, each house adjusts its c
   if afterNoonConsumptionAdjustmentFactor > adjFactorUpperThreshold [set afterNoonConsumptionAdjustmentFactor adjFactorUpperThreshold]
   if afterNoonConsumptionAdjustmentFactor < adjFactorLowerThreshold [set afterNoonConsumptionAdjustmentFactor adjFactorLowerThreshold]
 
-  show "weeklyAvg: before and after"
-  show weeklyAvgBeforeNoon
-  show weeklyAvgAfterNoon
-  show "budgetList"
-  show budgetList
-  show "adjustmentFactors"
-  show beforeNoonConsumptionAdjustmentFactor
-  show afterNoonConsumptionAdjustmentFactor
+  ;show "weeklyAvg: before and after"
+  ;show weeklyAvgBeforeNoon
+  ;show weeklyAvgAfterNoon
+  ;show "budgetList"
+  ;show budgetList
+  ;show "adjustmentFactors"
+  ;show beforeNoonConsumptionAdjustmentFactor
+  ;show afterNoonConsumptionAdjustmentFactor
   let counter 0
   repeat 24 [
     ifelse counter < 12 [
@@ -505,9 +505,9 @@ to calculateMonitoringVariables
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-388
+582
 10
-1147
+1341
 770
 -1
 -1
@@ -532,25 +532,25 @@ ticks
 30.0
 
 SLIDER
-23
-31
-195
-64
+29
+38
+201
+71
 number-houses
 number-houses
 15
 100
-59.0
+51.0
 1
 1
 NIL
 HORIZONTAL
 
 BUTTON
-234
-53
-301
-86
+319
+118
+386
+151
 NIL
 setup
 NIL
@@ -564,10 +564,10 @@ NIL
 1
 
 SLIDER
-23
-74
-195
-107
+29
+77
+201
+110
 number-hubs
 number-hubs
 1
@@ -579,10 +579,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-23
-117
-195
-150
+30
+115
+202
+148
 number-shops
 number-shops
 0
@@ -594,10 +594,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-235
-101
-298
-134
+394
+118
+457
+151
 NIL
 go
 T
@@ -611,10 +611,10 @@ NIL
 1
 
 MONITOR
-29
-215
-145
-260
+31
+227
+147
+272
 weekDay
 weekDay
 17
@@ -622,22 +622,22 @@ weekDay
 11
 
 MONITOR
-27
-270
-146
-315
-NIL
+29
+282
+148
+327
+Hub Market Supply
 hubMarketSupply
 17
 1
 11
 
 MONITOR
-27
-328
-148
-373
-NIL
+29
+340
+154
+385
+Hub Market Demand
 hubMarketDemand
 17
 1
@@ -662,10 +662,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot hubMarketExcessDemand"
 
 MONITOR
-156
-216
-331
-261
+158
+228
+333
+273
 Current Hub Market Price
 hubMarketPrice
 17
@@ -673,10 +673,10 @@ hubMarketPrice
 11
 
 MONITOR
-158
-271
-331
-316
+160
+283
+333
+328
 Current Factory Market Price
 factoryMarketPrice
 17
@@ -704,10 +704,10 @@ PENS
 "pen-2" 1.0 0 -10899396 true "" "plot averageHouseholdProduction"
 
 MONITOR
-159
-328
-331
-373
+161
+340
+333
+385
 AverageEarnings
 AverageEarnings
 17
@@ -715,10 +715,10 @@ AverageEarnings
 11
 
 SWITCH
-24
-163
-194
-196
+30
+156
+202
+189
 cloudiness
 cloudiness
 0
@@ -726,15 +726,160 @@ cloudiness
 -1000
 
 MONITOR
-210
-161
-326
-206
-clear sky level (%)
+344
+227
+467
+272
+Clear Sky Level (%)
 clearSkyLevel
 2
 1
 11
+
+SLIDER
+346
+467
+567
+500
+adjFactorLowerThreshold
+adjFactorLowerThreshold
+0
+100
+0.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+348
+505
+568
+538
+adjFactorUpperThreshold
+adjFactorUpperThreshold
+0
+100
+5.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+347
+441
+497
+466
+Thresholds
+20
+0.0
+1
+
+SLIDER
+348
+545
+568
+578
+localSurplusThreshold
+localSurplusThreshold
+0
+300
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+349
+588
+567
+621
+localLackThreshold
+localLackThreshold
+0
+300
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+349
+628
+570
+661
+hubMarketSurplusThreshold
+hubMarketSurplusThreshold
+0
+300
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+350
+671
+570
+704
+hubMarketLackThreshold
+hubMarketLackThreshold
+0
+300
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+351
+714
+571
+747
+hubMarketExcessDemandThreshold
+hubMarketExcessDemandThreshold
+0
+300
+100.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+31
+10
+181
+35
+Setup Variables
+20
+0.0
+1
+
+TEXTBOX
+32
+198
+182
+223
+Monitoring
+20
+0.0
+1
+
+TEXTBOX
+321
+54
+528
+104
+Setup and Start Simulation
+20
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
