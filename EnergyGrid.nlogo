@@ -359,10 +359,8 @@ end
 ;-------------------------;
 to energyDistribution
   ask hubs [
-    ; distribute 1. local energy, 2. hub energy, 3. factory energy
-    ; every house needs to track expenditures on energy per hour!, shops just don't care
 
-    ; 1) Use agent-set: Go through houses and shops with same hub-id as the hubs who-number
+    ; 1) Go through houses and shops with same hub-id as the hubs who-number
     ; and get their energy level
     ; Find and record percentage of coverage.
 
@@ -373,11 +371,8 @@ to energyDistribution
     set localCoverage localSupply / localDemand     ; >1 if surplus of energy
   ]
 
-    ; 2) Use agent-set: Go through hubs and check their energy levels.
+    ; 2) Go through hubs and check their energy levels.
     ; Find percentage coverage:
-    ; if less than 1: charge this percentage of each hubs request for energy with hub-prize, pay each hub for all their provided energy
-    ;    then charge the remaining percentage of the hubs requests with factory prize and record factory use.
-    ; else: charge all required energy of each hub with hub-prize and pay the percentage - 1 of each hub for their provided energy.
 
   let totalDemand sum [localDemand] of hubs
   let totalSupply sum [localSupply] of hubs
@@ -386,8 +381,7 @@ to energyDistribution
 
   ask hubs [
     ; 3) Use agent-set: Go through houses and shops with same hub-id as the hubs who-number
-    ; Charge each house and shop with summed up prize (local*percentageL + hub*percentageH + fact*percentageF) per package
-    ; Pay each house for produced energy (local*percentageL + hub*percentageH) per package.
+
 
     let my-houses houses with [ hubId = [who] of myself ]
     let my-shops shops with [ hubId = [who] of myself ]
@@ -416,7 +410,7 @@ to energyDistribution
 
     ifelse totalCoverage < 1 [ ; Energy must be bought from factory
       let hubCoverage totalCoverage
-      let factCoverage 1 - totalCoverage ; <-------------------------- Maybe record this
+      let factCoverage 1 - totalCoverage
 
       set hubProvidedPart  (1 - locallyProvidedPart ) * hubCoverage
       set factProvidedPart (1 - locallyProvidedPart ) * factCoverage
@@ -437,11 +431,14 @@ to energyDistribution
     ]
 
     ask my-houses [
-      let energyLevel [item ticks consumption] of self - [item ticks production] of self * clearSkyLevel
+
+      let energyLevel [item ticks consumption] of self - [item ticks production] of self * clearSkyLevel ; energyLevel < 0 if self-sustained
       ifelse energyLevel < 0 [
+        ; Pay each house for produced energy (local*percentageL + hub*percentageH) per package.
         let moneyEarned -1 * energyLevel * ([localPrice] of myself * locallySoldPart + externSoldPart * hubMarketPrice)
         earn moneyEarned
       ][
+        ; Charge each house and shop with summed up prize (local*percentageL + hub*percentageH + fact*percentageF) per package
         let priceToPay energyLevel * ( [localPrice] of myself * locallyProvidedPart +  hubProvidedPart * hubMarketPrice + factProvidedPart * factoryMarketPrice )
         pay priceToPay
       ]
@@ -587,7 +584,7 @@ number-shops
 number-shops
 0
 100
-23.0
+16.0
 1
 1
 NIL
