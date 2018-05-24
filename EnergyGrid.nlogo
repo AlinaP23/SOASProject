@@ -5,18 +5,15 @@ globals [
   hubMarketExcessDemand
   factoryMarketPrice
   weekDay
+  weekNumber
   averageHouseholdConsumption
   averageHouseholdProduction
   averageShopConsumption
   averageEarnings
-  ;adjFactorUpperThreshold
-  ;adjFactorUpperThresholdadjFactorLowerThreshold
-  ;localSurplusThreshold
-  ;localLackThreshold
-  ;hubMarketSurplusThreshold
-  ;hubMarketLackThreshold
-  ;hubMarketExcessDemandThreshold
+  sumAvgHouseholdCons
   clearSkyLevel
+  weeklyAverageHouseholdExpenses
+  weeklyAverageHouseholdConsumption
 ]
 
 directed-link-breed [activeLinks activeLink]
@@ -34,6 +31,7 @@ houses-own [
   budgetList
   priceMemoryList
   earningsMemory
+  weeklyExpensesAvg
 ]
 
 shops-own [
@@ -70,6 +68,8 @@ to setup
   ][
     ; set variables and constants
     set weekDay 1
+    set weekNumber 1
+    set sumAvgHouseholdCons 0
     ;set adjFactorUpperThreshold 5
     ;set adjFactorLowerThreshold 0
     ;set localSurplusThreshold 100
@@ -270,9 +270,13 @@ to go
     reset-ticks
     ifelse weekDay = 7 [
       set weekDay 1
+      set weekNumber weekNumber + 1
       ask houses [
         houseConsumptionAdjustment
       ]
+      set weeklyAverageHouseholdExpenses sum [weeklyExpensesAvg] of houses / number-houses
+      set weeklyAverageHouseholdConsumption sumAvgHouseholdCons
+      set sumAvgHouseholdCons 0
     ][
       set weekDay weekDay + 1
       set averageEarnings sum [earningsMemory] of houses / number-houses
@@ -454,22 +458,11 @@ end
 to houseConsumptionAdjustment ; at the end of the week, each house adjusts its consumption according to the last week's expenses
   let weeklyAvgBeforeNoon ( [item 0 priceMemoryList] of self / 7 )
   let weeklyAvgAfterNoon ( [item 1 priceMemoryList] of self / 7 )
+  set weeklyExpensesAvg weeklyAvgBeforeNoon + weeklyAvgAfterNoon
   set priceMemoryList [0 0]
   let beforeNoonConsumptionAdjustmentFactor ( [item 0 budgetList] of self) / weeklyAvgBeforeNoon
   let afterNoonConsumptionAdjustmentFactor ( [item 1 budgetList] of self) / weeklyAvgAfterNoon
-  if beforeNoonConsumptionAdjustmentFactor > adjFactorUpperThreshold [set beforeNoonConsumptionAdjustmentFactor adjFactorUpperThreshold]
-  if beforeNoonConsumptionAdjustmentFactor < adjFactorLowerThreshold [set beforeNoonConsumptionAdjustmentFactor adjFactorLowerThreshold]
-  if afterNoonConsumptionAdjustmentFactor > adjFactorUpperThreshold [set afterNoonConsumptionAdjustmentFactor adjFactorUpperThreshold]
-  if afterNoonConsumptionAdjustmentFactor < adjFactorLowerThreshold [set afterNoonConsumptionAdjustmentFactor adjFactorLowerThreshold]
 
-  ;show "weeklyAvg: before and after"
-  ;show weeklyAvgBeforeNoon
-  ;show weeklyAvgAfterNoon
-  ;show "budgetList"
-  ;show budgetList
-  ;show "adjustmentFactors"
-  ;show beforeNoonConsumptionAdjustmentFactor
-  ;show afterNoonConsumptionAdjustmentFactor
   let counter 0
   repeat 24 [
     ifelse counter < 12 [
@@ -497,6 +490,7 @@ end
 
 to calculateMonitoringVariables
   set averageHouseholdConsumption sum [item ticks consumption] of houses / number-houses
+  set sumAvgHouseholdCons sumAvgHouseholdCons + averageHouseholdConsumption
   set averageHouseholdProduction (sum [item ticks production] of houses * clearSkyLevel) / number-houses
   set averageShopConsumption sum [item ticks consumption] of shops / number-shops
 end
@@ -537,7 +531,7 @@ number-houses
 number-houses
 15
 100
-51.0
+72.0
 1
 1
 NIL
@@ -608,10 +602,10 @@ NIL
 1
 
 MONITOR
-31
-227
-147
-272
+29
+231
+145
+276
 weekDay
 weekDay
 17
@@ -659,9 +653,9 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot hubMarketExcessDemand"
 
 MONITOR
-158
+162
 228
-333
+337
 273
 Current Hub Market Price
 hubMarketPrice
@@ -718,14 +712,14 @@ SWITCH
 189
 cloudiness
 cloudiness
-0
+1
 1
 -1000
 
 MONITOR
-344
+348
 227
-467
+557
 272
 Clear Sky Level (%)
 clearSkyLevel
@@ -733,41 +727,11 @@ clearSkyLevel
 1
 11
 
-SLIDER
-346
-467
-567
-500
-adjFactorLowerThreshold
-adjFactorLowerThreshold
-0
-100
-0.0
-1
-1
-NIL
-HORIZONTAL
-
-SLIDER
-348
-505
-568
-538
-adjFactorUpperThreshold
-adjFactorUpperThreshold
-0
-100
-5.0
-1
-1
-NIL
-HORIZONTAL
-
 TEXTBOX
-347
-441
-497
-466
+351
+510
+501
+535
 Thresholds
 20
 0.0
@@ -782,7 +746,7 @@ localSurplusThreshold
 localSurplusThreshold
 0
 300
-100.0
+101.0
 1
 1
 NIL
@@ -877,6 +841,39 @@ Setup and Start Simulation
 20
 0.0
 1
+
+MONITOR
+344
+285
+553
+330
+Weekly Average Household Expenses
+weeklyAverageHouseholdExpenses
+17
+1
+11
+
+MONITOR
+344
+342
+552
+387
+Weekly Average Household Consumption
+weeklyAverageHouseholdConsumption
+17
+1
+11
+
+MONITOR
+344
+401
+551
+446
+Week Number
+weekNumber
+17
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
