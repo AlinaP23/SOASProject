@@ -372,7 +372,11 @@ to energyDistribution
     let my-shops shops with [ hubId = [who] of myself ]
     set localDemand sum [item ticks consumption] of my-houses + sum [consumption] of my-shops ; correct use of supply and demand?
     set localSupply sum [item ticks production] of my-houses * clearSkyLevel
+    ifelse localDemand = 0
+    [set localCoverage 1]
+    [
     set localCoverage localSupply / localDemand     ; >1 if surplus of energy
+    ]
   ]
 
     ; 2) Go through hubs and check their energy levels.
@@ -531,7 +535,7 @@ number-houses
 number-houses
 15
 100
-72.0
+100.0
 1
 1
 NIL
@@ -563,7 +567,7 @@ number-hubs
 number-hubs
 1
 10
-5.0
+10.0
 1
 1
 NIL
@@ -578,7 +582,7 @@ number-shops
 number-shops
 0
 100
-16.0
+55.0
 1
 1
 NIL
@@ -746,7 +750,7 @@ localSurplusThreshold
 localSurplusThreshold
 0
 300
-101.0
+110.0
 1
 1
 NIL
