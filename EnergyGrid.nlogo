@@ -496,10 +496,10 @@ to calculateMonitoringVariables
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-582
-10
-1341
-770
+607
+11
+1366
+771
 -1
 -1
 22.76
@@ -523,10 +523,10 @@ ticks
 30.0
 
 SLIDER
-29
-38
-201
-71
+30
+47
+202
+80
 number-houses
 number-houses
 15
@@ -538,10 +538,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-319
-118
-386
-151
+457
+156
+524
+189
 NIL
 setup
 NIL
@@ -555,10 +555,10 @@ NIL
 1
 
 SLIDER
-29
-77
-201
-110
+30
+86
+202
+119
 number-hubs
 number-hubs
 1
@@ -570,10 +570,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-30
-115
-202
-148
+31
+124
+203
+157
 number-shops
 number-shops
 0
@@ -585,10 +585,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-394
-118
-457
-151
+527
+156
+590
+189
 NIL
 go
 T
@@ -602,10 +602,10 @@ NIL
 1
 
 MONITOR
-29
-231
-145
-276
+341
+545
+553
+590
 weekDay
 weekDay
 17
@@ -653,10 +653,10 @@ PENS
 "default" 1.0 0 -16777216 true "" "plot hubMarketExcessDemand"
 
 MONITOR
-162
-228
-337
-273
+342
+283
+551
+328
 Current Hub Market Price
 hubMarketPrice
 17
@@ -675,24 +675,24 @@ factoryMarketPrice
 11
 
 PLOT
-28
-600
-331
-750
+29
+602
+495
+752
 Average Household Consumption
-tick
+time
 consumption
 0.0
 120.0
 0.0
 10.0
 false
-false
+true
 "" "if weekDay = 5 and ticks = 0 [ set-plot-x-range (plot-x-min + 120) (plot-x-max + 120) ]"
 PENS
-"default" 1.0 0 -16777216 true "" "plot averageHouseholdConsumption"
-"pen-1" 1.0 0 -2139308 true "" "plot averageShopConsumption"
-"pen-2" 1.0 0 -10899396 true "" "plot averageHouseholdProduction"
+"Household Consumption" 1.0 0 -16777216 true "" "plot averageHouseholdConsumption"
+"Shop Consumption" 1.0 0 -2139308 true "" "plot averageShopConsumption"
+"Household Production" 1.0 0 -10899396 true "" "plot averageHouseholdProduction"
 
 MONITOR
 161
@@ -706,10 +706,10 @@ AverageEarnings
 11
 
 SWITCH
-30
-156
-202
-189
+31
+165
+203
+198
 cloudiness
 cloudiness
 1
@@ -717,10 +717,10 @@ cloudiness
 -1000
 
 MONITOR
-348
-227
-557
-272
+342
+340
+551
+385
 Clear Sky Level (%)
 clearSkyLevel
 2
@@ -728,20 +728,20 @@ clearSkyLevel
 11
 
 TEXTBOX
-351
-510
-501
-535
+219
+22
+369
+47
 Thresholds
 20
 0.0
 1
 
 SLIDER
-348
-545
-568
-578
+215
+49
+435
+82
 localSurplusThreshold
 localSurplusThreshold
 0
@@ -753,10 +753,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-349
-588
-567
-621
+216
+92
+434
+125
 localLackThreshold
 localLackThreshold
 0
@@ -768,10 +768,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-349
-628
-570
-661
+216
+132
+437
+165
 hubMarketSurplusThreshold
 hubMarketSurplusThreshold
 0
@@ -783,10 +783,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-350
-671
-570
-704
+217
+175
+437
+208
 hubMarketLackThreshold
 hubMarketLackThreshold
 0
@@ -798,10 +798,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-351
-714
-571
-747
+218
+218
+438
+251
 hubMarketExcessDemandThreshold
 hubMarketExcessDemandThreshold
 0
@@ -813,40 +813,40 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-31
-10
-181
-35
+32
+19
+182
+44
 Setup Variables
 20
 0.0
 1
 
 TEXTBOX
-32
-198
-182
-223
+30
+248
+180
+273
 Monitoring
 20
 0.0
 1
 
 TEXTBOX
-321
-54
-528
-104
+459
+92
+666
+142
 Setup and Start Simulation
 20
 0.0
 1
 
 MONITOR
-344
-285
-553
-330
+339
+394
+551
+439
 Weekly Average Household Expenses
 weeklyAverageHouseholdExpenses
 17
@@ -854,10 +854,10 @@ weeklyAverageHouseholdExpenses
 11
 
 MONITOR
-344
-342
-552
-387
+340
+445
+551
+490
 Weekly Average Household Consumption
 weeklyAverageHouseholdConsumption
 17
@@ -865,10 +865,10 @@ weeklyAverageHouseholdConsumption
 11
 
 MONITOR
-344
-401
-551
-446
+340
+495
+552
+540
 Week Number
 weekNumber
 17
