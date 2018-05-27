@@ -330,15 +330,15 @@ to computeHubMarketPrice
     ifelse hubMarketSurplus > hubMarketSurplusThreshold [
       set hubMarketPrice 1       ; set price to minimum if surplus above threshold
     ][
-      set hubMarketPrice 1.5 - (0.5 * (hubMarketSurplus / hubMarketSurplusThreshold)) ; --> below 1.5€ (above 1€)
+      set hubMarketPrice 2 - (0.5 * (hubMarketSurplus / hubMarketSurplusThreshold)) ; --> below 2€ (above 1.5€)
     ]
   ][
     ; price increase due to lack
     let hubMarketLack hubMarketDemand - hubMarketSupply
     ifelse hubMarketLack > hubMarketLackThreshold [
-      set hubMarketPrice 2        ; set price to maximum if lack above threshold
+      set hubMarketPrice 2.5        ; set price to maximum if lack above threshold
     ][
-      set hubMarketPrice 1.5 + (0.5 * (hubMarketLack / hubMarketLackThreshold)) ; --> above 1.5€ (below 2€)
+      set hubMarketPrice 2 + (0.5 * (hubMarketLack / hubMarketLackThreshold)) ; --> above 2€ (below 2.5€)
     ]
   ]
 end
@@ -348,13 +348,13 @@ to computeFactoryMarketPrice
   ifelse hubMarketSupply < hubMarketDemand [
     set hubMarketExcessDemand hubMarketDemand - hubMarketSupply
     ifelse hubMarketExcessDemand > hubMarketExcessDemandThreshold [
-      set factoryMarketPrice 2.5 ; set price to maximum if excess demand above threshold
+      set factoryMarketPrice 3 ; set price to maximum if excess demand above threshold
     ][
-      set factoryMarketPrice 2 + (0.5 * (hubMarketExcessDemand / hubMarketExcessDemandThreshold)) ; --> only 2€ or above
+      set factoryMarketPrice 2.5 + (0.5 * (hubMarketExcessDemand / hubMarketExcessDemandThreshold)) ; --> only 2.5€ or above
     ]
   ][
     set hubMarketExcessDemand 0
-    set factoryMarketPrice 2
+    set factoryMarketPrice 2.5
   ]
 end
 
@@ -750,7 +750,7 @@ localSurplusThreshold
 localSurplusThreshold
 0
 300
-110.0
+300.0
 1
 1
 NIL
@@ -765,7 +765,7 @@ localLackThreshold
 localLackThreshold
 0
 300
-100.0
+300.0
 1
 1
 NIL
@@ -780,7 +780,7 @@ hubMarketSurplusThreshold
 hubMarketSurplusThreshold
 0
 300
-100.0
+300.0
 1
 1
 NIL
@@ -795,7 +795,7 @@ hubMarketLackThreshold
 hubMarketLackThreshold
 0
 300
-100.0
+300.0
 1
 1
 NIL
@@ -810,7 +810,7 @@ hubMarketExcessDemandThreshold
 hubMarketExcessDemandThreshold
 0
 300
-100.0
+300.0
 1
 1
 NIL
